@@ -42,6 +42,8 @@ enum opcodes {
     LD1       = 0xF5, // load global from r1
     ST2       = 0xF6, // pops top of stack and stores it in r2
     LD2       = 0xF7, // load global from r2
+	/* added operations */
+	MOV 	= 0x90, // moves value in one register to another. Register numbers will be specified in next byte.
 };
 
 /* defining our virtual machine */
@@ -77,40 +79,40 @@ int run(VM* vm){
         case NOP: break;    // pass
         case DCONST_M1:     // push -1.0 onto stack
             // TODO: implement this.
-			v = -1;
-			PUSH(vm, v);
+		v = -1;
+		PUSH(vm, v);
             break;
         case DCONST_0:      // push 0.0 onto stack
-			v = 0;
-			PUSH(vm, v);
+		v = 0;
+		PUSH(vm, v);
             // TODO: implement this.
             break;
         case DCONST_1:      // push 1.0 onto stack
             // TODO: implement this.
-			v = 1;
-			PUSH(vm, v);
+		v = 1;
+		PUSH(vm, v);
             break;
         case DCONST_2:      // push 2.0 onto stack
             // TODO: implement this.
-			v = 2;
-			PUSH(vm, v);
+		v = 2;
+		PUSH(vm, v);
             break;
         case DCONST:        // reads next 8 bytes of opcode as a double, and stores it on the stack.
             // HINT: use memcpy to read next 8 bytes of code as a double. make sure you consider endianness.
-			memcpy((void*) &v, vm->code, 8);
-			u_int16_t  checkEndianness = 0x0102;
-			if (*((char *) &checkEndianness) == 0x02) //if the first byte stored is 0x02, then I'm on a little endian machine!
+		memcpy((void*) &v, vm->code, 8);
+		u_int16_t  checkEndianness = 0x0102;
+		if (*((char *) &checkEndianness) == 0x02) //if the first byte stored is 0x02, then I'm on a little endian machine!
+		{
+		// flip the bytes. unsure why this is needed, seeing as memcpy doesn't change the byte order, but the question hints at it so I think this is what it wants?
+			char * bytes = &v;
+			for(int i = 0; i < 8; i++)
 			{
-			// flip the bytes. unsure why this is needed, seeing as memcpy doesn't change the byte order, but the question hints at it so I think this is what it wants?
-				char * bytes = &v;
-				for(int i = 0; i < 8; i++)
-				{
-					char temp = bytes[i];
-					bytes[i] = bytes[7-i];
-					bytes[7-i] = temp;
-				}
+				char temp = bytes[i];
+				bytes[i] = bytes[7-i];
+				bytes[7-i] = temp;
 			}
-			PUSH(vm, v);
+		}
+		PUSH(vm, v);
             break;
         case ADD:           // add two doubles from top of stack and push result back onto stack
             b = POP(vm);
@@ -166,6 +168,21 @@ int run(VM* vm){
             // TODO: implement this.
 		printf("%f\n", POP(vm));
             break;
+	case MOV:; // reads next byte as 0xXY where X is the number of the src register and Y is the dst register. e.g., 0x6012 would say
+		  // move value in register 1 to register 2
+		unsigned char byte = NCODE(vm);
+		switch(byte) {
+			case 0x12:
+				vm->r2 = vm->r1;
+				break;
+			case 0x21:
+				vm->r1 = vm->r2;
+				break;
+			default:
+				printf("InvalidArgumentError: Operation %x received invalid argument %x\n", opcode, byte);
+				return EXIT_FAILURE;
+		}
+		break;
         default:
             printf("InvalidOpcodeError: %x\n", opcode);  // terminate program at unknown opcode and show error.
             return EXIT_FAILURE;
@@ -187,6 +204,30 @@ int main(void) {
 		HALT };
 	VM* vm = newVM(bytecode /* program to execute */ );
 	int exit_status = run(vm);
+	printf("Exited vm with code: %d\n", exit_status);
+	delVM(vm);
+	char testArithmetic[] = {
+		DCONST_1,
+		DCONST_2,
+		ADD,
+		PRINT, //should print 3
+		DCONST_1,
+		DCONST_2,
+		DIV,
+		PRINT, //should print 1/2
+		DCONST_1,
+		DCONST_2,
+		MUL,
+		PRINT, //should print 2
+		DCONST_1,
+		DCONST_2,
+		NEG,
+		PRINT, //should print -2
+		HALT
+	};
+	vm = newVM(testArithmetic);
+	exit_status = run(vm);
+	printf("Exited vm with code: %d\n", exit_status);
 	delVM(vm);
 	return exit_status;
 };
