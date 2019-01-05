@@ -82,7 +82,7 @@ int run(VM* vm){
             break;
         case DCONST_0:      // push 0.0 onto stack
 			v = 0;
-			PUSH(vm, va);
+			PUSH(vm, v);
             // TODO: implement this.
             break;
         case DCONST_1:      // push 1.0 onto stack
@@ -98,9 +98,10 @@ int run(VM* vm){
         case DCONST:        // reads next 8 bytes of opcode as a double, and stores it on the stack.
             // HINT: use memcpy to read next 8 bytes of code as a double. make sure you consider endianness.
 			memcpy((void*) &v, vm->code, 8);
-			uint16_t  checkEndianness = 0x0102;
+			u_int16_t  checkEndianness = 0x0102;
 			if (*((char *) &checkEndianness) == 0x02) //if the first byte stored is 0x02, then I'm on a little endian machine!
 			{
+			// flip the bytes. unsure why this is needed, seeing as memcpy doesn't change the byte order, but the question hints at it so I think this is what it wants?
 				char * bytes = &v;
 				for(int i = 0; i < 8; i++)
 				{
@@ -138,23 +139,32 @@ int run(VM* vm){
             break;
         case NEG:                         // negates top of stack
             //TODO: implement this.
+		b = POP(vm);
+		PUSH(vm, (double) (b*-1));
             break;
         case LD1:          // put value from r1 on top of stack
             // TODO: implement this.
+		v = vm->r1;
+		PUSH(vm, v);
             break;
         case ST1:                         // store top of stack in r1
             // TODO: implement this.
+		vm->r1 = POP(vm);
             break;
         case LD2:           // put value from r2 on top of stack
             // TODO: implement this.
             // HINT: should be similar to LD1.
+		v = vm->r1;
+		PUSH(vm, v);
             break;
         case ST2:                         // store top of stack in r2
             // TODO: implement this.
             // HINT: should be similar to ST1.
+		vm->r2 = POP(vm);
             break;
         case PRINT:                       // print top of stack, (and discard value afterwards.)
             // TODO: implement this.
+		printf("%f\n", POP(vm));
             break;
         default:
             printf("InvalidOpcodeError: %x\n", opcode);  // terminate program at unknown opcode and show error.
