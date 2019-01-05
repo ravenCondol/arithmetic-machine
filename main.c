@@ -97,22 +97,25 @@ int run(VM* vm){
 		v = 2;
 		PUSH(vm, v);
             break;
-        case DCONST:        // reads next 8 bytes of opcode as a double, and stores it on the stack.
-            // HINT: use memcpy to read next 8 bytes of code as a double. make sure you consider endianness.
-		memcpy((void*) &v, vm->code, 8);
+        case DCONST:;        // reads next 8 bytes of opcode as a double, and stores it on the stack.
+            // HINT: use memcpy to read next 8 bytes of code as a double. make sure you consider endianness
+		char buffer[8];
+		memcpy((void*) &buffer, (vm->code+vm->pc), 8);
+		vm->pc += 8;
 		u_int16_t  checkEndianness = 0x0102;
 		if (*((char *) &checkEndianness) == 0x02) //if the first byte stored is 0x02, then I'm on a little endian machine!
 		{
 		// flip the bytes. unsure why this is needed, seeing as memcpy doesn't change the byte order, but the question hints at it so I think this is what it wants?
-			char * bytes = &v;
-			for(int i = 0; i < 8; i++)
+			for(int i = 0; i < 4; i++)
 			{
-				char temp = bytes[i];
-				bytes[i] = bytes[7-i];
-				bytes[7-i] = temp;
+				char temp = buffer[i];
+				//printf("buffer[%d] = %d\n", i, temp);
+				buffer[i] = buffer[7-i];
+				buffer[7-i] = temp;
 			}
 		}
-		PUSH(vm, v);
+		double* result = &buffer;
+		PUSH(vm, *result);
             break;
         case ADD:           // add two doubles from top of stack and push result back onto stack
             b = POP(vm);
@@ -228,6 +231,19 @@ int main(void) {
 	vm = newVM(testArithmetic);
 	exit_status = run(vm);
 	printf("Exited vm with code: %d\n", exit_status);
+	delVM(vm);
+
+	//one of these next two should apparently print 1.0
+	char testProgram1[] = {DCONST, 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, PRINT, HALT};
+	vm = newVM(testProgram1);
+	exit_status = run(vm);
+	printf("Exited vm with code: %d\n", exit_status);
+	delVM(vm);
+
+	char testProgram2[] = {DCONST, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, PRINT, HALT};
+	vm = newVM(testProgram2);
+	exit_status = run(vm);
+	printf("Exited vm with code: %d\n", exit_status);	
 	delVM(vm);
 	return exit_status;
 };
